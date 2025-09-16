@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Système de Licences</title>
   <style>
@@ -38,8 +38,9 @@
         .then(res => res.json())
         .then(data => {
           if (data.error) return alert(data.error);
-          localStorage.setItem('adminData', JSON.stringify(data));
-          window.location.href = 'admin.html';
+          // Passe les données dans l'URL en base64
+          const encoded = btoa(JSON.stringify(data));
+          window.location.href = `admin.html#${encoded}`;
         });
     }
   </script>
