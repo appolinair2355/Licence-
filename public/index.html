@@ -39,36 +39,32 @@
   <button onclick="adminAccess()">Administrateur</button>
 
   <script>
-    function verifyLicense() {
+    async function verifyLicense() {
       const key = prompt("Entrez votre clé de licence :");
       if (!key) return;
-      fetch('/api/verify', {
+      const res = await fetch('/api/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key }),
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (!data.valid) return alert(data.message);
-          const expires = Date.now() + (data.remainingMs || 0);
-          window.location.href = `welcome.html?key=${encodeURIComponent(key)}&expires=${expires}`;
-        });
+      });
+      const data = await res.json();
+      if (!data.valid) return alert(data.message);
+      const expires = Date.now() + (data.remainingMs || 0);
+      window.location.href = `welcome.html?key=${encodeURIComponent(key)}&expires=${expires}`;
     }
 
-    function adminAccess() {
+    async function adminAccess() {
       const password = prompt("Mot de passe administrateur :");
       if (!password) return;
-      fetch('/api/admin/licenses', {
+      const res = await fetch('/api/admin/licenses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.error) return alert(data.error);
-          const encoded = btoa(JSON.stringify(data));
-          window.location.href = `admin.html#${encoded}`;
-        });
+      });
+      const data = await res.json();
+      if (data.error) return alert(data.error);
+      localStorage.setItem('adminData', JSON.stringify(data));
+      window.location.href = 'admin.html';
     }
   </script>
 </body>
