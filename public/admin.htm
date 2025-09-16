@@ -5,19 +5,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin - Licences</title>
   <style>
-    table { width: 90%; margin: 20px auto; border-collapse: collapse; }
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h2 { margin-top: 30px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
     th { background-color: #f2f2f2; }
+    .used { color: orange; font-weight: bold; }
+    .available { color: green; font-weight: bold; }
   </style>
 </head>
 <body>
   <h1>Licences par catégorie</h1>
-  <div id="content"></div>
+  <div id="content">Chargement...</div>
 
   <script>
-    function render() {
-      const data = JSON.parse(localStorage.getItem('adminData'));
+    function render(data) {
       const content = document.getElementById('content');
+      if (!data || Object.keys(data).length === 0) {
+        content.innerHTML = '<p>Aucune licence trouvée.</p>';
+        return;
+      }
+
       content.innerHTML = '';
 
       for (const [category, licenses] of Object.entries(data)) {
@@ -26,6 +34,21 @@
         content.appendChild(h2);
 
         const table = document.createElement('table');
+        const rows = licenses.map(l => {
+          const isUsed = l.status === 'utilisée';
+          const keyText = isUsed ? `⏳⏳ ${l.key}` : l.key;
+          const remainingText = isUsed ? l.remaining : `${l.remaining} ✅`;
+
+          return `
+            <tr>
+              <td>${keyText}</td>
+              <td>${l.duration}</td>
+              <td>${remainingText}</td>
+              <td>${l.status}</td>
+            </tr>
+          `;
+        }).join('');
+
         table.innerHTML = `
           <thead>
             <tr>
@@ -35,34 +58,36 @@
               <th>Statut</th>
             </tr>
           </thead>
-          <tbody>
-            ${licenses.map(l => `
-              <tr>
-                <td>${l.key}</td>
-                <td>${l.duration}</td>
-                <td>${l.remaining}</td>
-                <td>${l.status}</td>
-              </tr>
-            `).join('')}
-          </tbody>
+          <tbody>${rows}</tbody>
         `;
         content.appendChild(table);
       }
     }
 
-    render();
-    setInterval(() => {
+    function loadAdminData() {
       fetch('/api/admin/licenses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: 'kouame2025' }),
+        body: JSON.stringify({ password: 'kouame2025' })
       })
         .then(res => res.json())
         .then(data => {
-          localStorage.setItem('adminData', JSON.stringify(data));
-          render();
+          if (data.error) {
+            document.body.innerHTML = '<p style="color:red;">Accès refusé.</p>';
+            return;
+          }
+          render(data);
+        })
+        .catch(err => {
+          document.body.innerHTML = '<p style="color:red;">Erreur de chargement.</p>';
         });
-    }, 30000);
+    }
+
+    // Chargement initial
+    loadAdminData();
+
+    // Refresh auto toutes les 30s
+    setInterval(loadAdminData, 30000);
   </script>
 </body>
 </html>
