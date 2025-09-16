@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Bienvenue</title>
+  <style>
+    body {
+      height: 100vh;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+      font-family: Arial, Helvetica, sans-serif;
+      color: #333;
+    }
+    .card {
+      background: #fff;
+      padding: 40px 50px;
+      border-radius: 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,.2);
+      text-align: center;
+      max-width: 600px;
+      width: 90%;
+    }
+    h1 { margin: 0 0 10px; font-size: 2rem; }
+    #countdown {
+      font-size: 48px;
+      font-weight: bold;
+      margin: 20px 0;
+      letter-spacing: 2px;
+      color: #764ba2;
+    }
+    textarea {
+      width: 100%;
+      height: 100px;
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      font-size: 16px;
+      resize: vertical;
+    }
+    button {
+      margin-top: 15px;
+      padding: 12px 30px;
+      border: none;
+      border-radius: 30px;
+      background: #764ba2;
+      color: #fff;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform .2s;
+    }
+    button:hover { transform: scale(1.05); }
+    #result {
+      margin-top: 20px;
+      text-align: left;
+      white-space: pre-wrap;
+      background: #f9f9f9;
+      padding: 15px;
+      border-radius: 10px;
+    }
+    .poem { color: #6b46c1; font-style: italic; }
+    .proverb { color: #dd6b20; font-weight: bold; }
+    .bible { color: #3182ce; font-style: italic; }
+    .lesson { color: #38a169; font-weight: bold; }
+    .episode { color: #3182ce; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Bienvenue 🎉</h1>
+    <p>Votre licence est valide pendant encore :</p>
+    <div id="countdown">--:--:--</div>
+
+    <textarea id="prompt" placeholder="Posez votre question ou demandez une histoire, poème, leçon, proverbe, passage biblique..."></textarea>
+    <button onclick="askAI()">IA Kouamé</button>
+
+    <div id="result" style="display:none;"></div>
+    <button onclick="location.href='index.html'">Retour</button>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const key = params.get('key');
+    const expires = parseInt(params.get('expires'), 10);
+
+    function fmt(ms) {
+      const t = Math.max(0, Math.floor(ms / 1000));
+      const h = String(Math.floor(t / 3600)).padStart(2, '0');
+      const m = String(Math.floor((t % 3600) / 60)).padStart(2, '0');
+      const s = String(t % 60).padStart(2, '0');
+      return `${h}:${m}:${s}`;
+    }
+    function update() {
+      const left = expires - Date.now();
+      if (left <= 0) {
+        document.getElementById('countdown').textContent = "00:00:00";
+        document.getElementById('result').textContent = "Licence expirée.";
+        document.getElementById('result').style.display = 'block';
+        return;
+      }
+      document.getElementById('countdown').textContent = fmt(left);
+    }
+    update(); setInterval(update, 1000);
+
+    async function askAI() {
+      const prompt = document.getElementById('prompt').value.trim();
+      if (!prompt) return alert("Veuillez écrire une demande.");
+      const resDiv = document.getElementById('result');
+      resDiv.style.display = 'block';
+      resDiv.textContent = "Génération en cours...";
+
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+      }).then(r => r.json());
+      if (res.error) {
+        resDiv.textContent = res.error;
+        return;
+      }
+      let html = res.result
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/\n/g, '<br>');
+      // Styliser automatiquement
+      if (html.toLowerCase().includes('épisode')) html = html.replace(/(épisode\s*\d+)/gi, '<span class="episode">$1</span>');
+      if (html.toLowerCase().includes('proverbe')) html = `<div class="proverb">${html}</div>`;
+      else if (html.toLowerCase().includes('poème') || html.toLowerCase().includes('poem')) html = `<div class="poem">${html}</div>`;
+      else if (html.toLowerCase().includes('bible') || html.toLowerCase().includes('psaume')) html = `<div class="bible">${html}</div>`;
+      else if (html.toLowerCase().includes('leçon') || html.toLowerCase().includes('lesson')) html = `<div class="lesson">${html}</div>`;
+      resDiv.innerHTML = html;
+    }
+  </script>
+</body>
+</html>
