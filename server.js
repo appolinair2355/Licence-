@@ -105,19 +105,29 @@ app.post('/api/admin/licenses', (req, res) => {
   res.json(result);
 });
 
+/* ===== IA OPENAI – STREAMING (comme chat.html) ===== */
 app.post('/api/ai', async (req, res) => {
   if (!process.env.OPENAI_API_KEY) return res.status(501).json({ error: 'Clé API absente.' });
   const { prompt } = req.body;
   if (!prompt) return res.status(400).json({ error: 'Prompt manquant.' });
+
   try {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const completion = await openai.chat.completions.create({
+    const stream = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages: [{ role: 'user', content: prompt }],
-      max_tokens: 600,
-      temperature: 0.7,
+      stream: true,
+      max_tokens: 800,
+      temperature: 0.7
     });
-    res.json({ result: completion.choices[0].message.content.trim() });
+
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    for await (const chunk of stream) {
+      const delta = chunk.choices[0]?.delta?.content;
+      if (delta) res.write(delta);
+    }
+    res.end();
+
   } catch (err) {
     console.error('OpenAI error :', err.message);
     res.status(500).json({ error: 'Erreur OpenAI.' });
@@ -128,4 +138,4 @@ maintainLicenses();
 setInterval(maintainLicenses, 30_000);
 
 app.listen(PORT, () => console.log(`🌍 Server running on port ${PORT}`));
-  
+        
