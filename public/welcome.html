@@ -102,11 +102,18 @@
         document.getElementById('countdown').textContent = "00:00:00";
         document.getElementById('result').textContent = "Licence expirée.";
         document.getElementById('result').style.display = 'block';
+        setTimeout(() => location.href = 'index.html', 2000);
         return;
       }
       document.getElementById('countdown').textContent = fmt(left);
     }
     update(); setInterval(update, 1000);
+
+    // Vérifie côté serveur toutes les 5 s (redirection si jamais)
+    setInterval(async () => {
+      const res = await fetch(`/api/remaining/${key}`).then(r => r.json());
+      if (!res.valid) location.href = 'index.html';
+    }, 5000);
 
     async function askAI() {
       const prompt = document.getElementById('prompt').value.trim();
@@ -128,7 +135,6 @@
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
         .replace(/\n/g, '<br>');
-      // Styliser automatiquement
       if (html.toLowerCase().includes('épisode')) html = html.replace(/(épisode\s*\d+)/gi, '<span class="episode">$1</span>');
       if (html.toLowerCase().includes('proverbe')) html = `<div class="proverb">${html}</div>`;
       else if (html.toLowerCase().includes('poème') || html.toLowerCase().includes('poem')) html = `<div class="poem">${html}</div>`;
@@ -138,4 +144,5 @@
     }
   </script>
 </body>
-</html>
+  </html>
+  
