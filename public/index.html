@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Système de Licences</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
+    button { margin: 10px; padding: 10px 20px; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <h1>Système de Gestion de Licences</h1>
+  <button onclick="verifyLicense()">Votre licence</button>
+  <button onclick="adminAccess()">Administrateur</button>
+
+  <script>
+    function verifyLicense() {
+      const key = prompt("Entrez votre clé de licence :");
+      if (!key) return;
+      fetch('/api/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key }),
+      })
+        .then(res => res.json())
+        .then(data => alert(data.message));
+    }
+
+    function adminAccess() {
+      const password = prompt("Mot de passe administrateur :");
+      if (!password) return;
+      fetch('/api/admin/licenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.error) return alert(data.error);
+          localStorage.setItem('adminData', JSON.stringify(data));
+          window.location.href = 'admin.html';
+        });
+    }
+  </script>
+</body>
+</html>
