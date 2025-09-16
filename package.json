@@ -1,68 +1,12 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Admin - Licences</title>
-  <style>
-    table { width: 90%; margin: 20px auto; border-collapse: collapse; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-    th { background-color: #f2f2f2; }
-  </style>
-</head>
-<body>
-  <h1>Licences par catégorie</h1>
-  <div id="content"></div>
-
-  <script>
-    function render() {
-      const data = JSON.parse(localStorage.getItem('adminData'));
-      const content = document.getElementById('content');
-      content.innerHTML = '';
-
-      for (const [category, licenses] of Object.entries(data)) {
-        const h2 = document.createElement('h2');
-        h2.textContent = `Catégorie ${category}`;
-        content.appendChild(h2);
-
-        const table = document.createElement('table');
-        table.innerHTML = `
-          <thead>
-            <tr>
-              <th>Clé</th>
-              <th>Durée (min)</th>
-              <th>Temps restant</th>
-              <th>Statut</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${licenses.map(l => `
-              <tr>
-                <td>${l.key}</td>
-                <td>${l.duration}</td>
-                <td>${l.remaining}</td>
-                <td>${l.status}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        `;
-        content.appendChild(table);
-      }
-    }
-
-    render();
-    setInterval(() => {
-      fetch('/api/admin/licenses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: 'kouame2025' }),
-      })
-        .then(res => res.json())
-        .then(data => {
-          localStorage.setItem('adminData', JSON.stringify(data));
-          render();
-        });
-    }, 30000);
-  </script>
-</body>
-</html>
+{
+  "name": "licence-system",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5"
+  }
+}
