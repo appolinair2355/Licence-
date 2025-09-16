@@ -13,15 +13,15 @@ const openai = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public', { 
-  maxAge: process.env.NODE_ENV === 'production' ? '1d' : '0', 
-  etag: true 
+app.use(express.static('public', {
+  maxAge: process.env.NODE_ENV === 'production' ? '1d' : '0',
+  etag: true
 }));
 
 const LICENSE_FILE = path.resolve(process.env.LICENSES_PATH || './licenses.json');
 const CATEGORIES = (process.env.CATEGORIES || '10,25,60,120')
   .split(',')
-  .map((d) => ({ name: `${d}min`, duration: parseInt(d, 10) }));
+  .map(d => ({ name: `${d}min`, duration: parseInt(d, 10) }));
 
 const loadLicenses = () => fs.existsSync(LICENSE_FILE) ? JSON.parse(fs.readFileSync(LICENSE_FILE)) : [];
 const saveLicenses = (data) => fs.writeFileSync(LICENSE_FILE, JSON.stringify(data, null, 2));
@@ -78,7 +78,7 @@ app.post('/api/verify', (req, res) => {
 });
 
 app.post('/api/admin/licenses', (req, res) => {
-  if (req.body.password !== (process.env.ADMIN_PWD || 'kouame2025')) 
+  if (req.body.password !== (process.env.ADMIN_PWD || 'kouame2025'))
     return res.status(403).json({ error: 'Accès refusé.' });
 
   maintainLicenses();
@@ -116,10 +116,9 @@ app.post('/api/ai', async (req, res) => {
       max_tokens: 800,
       temperature: 0.7
     });
-
     res.json({ result: completion.choices[0].message.content.trim() });
   } catch (err) {
-    console.error(err);
+    console.error('OpenAI error :', err.message);
     res.status(500).json({ error: 'Erreur OpenAI.' });
   }
 });
@@ -128,3 +127,4 @@ maintainLicenses();
 setInterval(maintainLicenses, 30_000);
 
 app.listen(PORT, () => console.log(`🌍 Server running on port ${PORT}`));
+  
