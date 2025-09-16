@@ -13,15 +13,10 @@ const openai = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public', {
-  maxAge: process.env.NODE_ENV === 'production' ? '1d' : '0',
-  etag: true
-}));
+app.use(express.static('public', { maxAge: process.env.NODE_ENV === 'production' ? '1d' : '0', etag: true }));
 
 const LICENSE_FILE = path.resolve(process.env.LICENSES_PATH || './licenses.json');
-const CATEGORIES = (process.env.CATEGORIES || '10,25,60,120')
-  .split(',')
-  .map(d => ({ name: `${d}min`, duration: parseInt(d, 10) }));
+const CATEGORIES = (process.env.CATEGORIES || '10,25,60,120').split(',').map(d => ({ name: `${d}min`, duration: parseInt(d, 10) }));
 
 const loadLicenses = () => fs.existsSync(LICENSE_FILE) ? JSON.parse(fs.readFileSync(LICENSE_FILE)) : [];
 const saveLicenses = (data) => fs.writeFileSync(LICENSE_FILE, JSON.stringify(data, null, 2));
@@ -77,6 +72,14 @@ app.post('/api/verify', (req, res) => {
   res.json({ valid: true, remainingMs: lic.expiresAt - Date.now() });
 });
 
+app.get('/api/remaining/:key', (req, res) => {
+  const licenses = loadLicenses();
+  const lic = licenses.find(l => l.key === req.params.key && l.used);
+  if (!lic) return res.json({ valid: false });
+  const left = Math.max(0, lic.expiresAt - Date.now());
+  res.json({ valid: left > 0, remainingMs: left });
+});
+
 app.post('/api/admin/licenses', (req, res) => {
   if (req.body.password !== (process.env.ADMIN_PWD || 'kouame2025'))
     return res.status(403).json({ error: 'Accès refusé.' });
@@ -90,14 +93,15 @@ app.post('/api/admin/licenses', (req, res) => {
     result[cat.name] = licenses
       .filter(l => l.category === cat.name)
       .map(l => {
-        const left = Math.max(0, l.expiresAt - now);
+        const left = l.used ? Math.max(0, l.expiresAt - now) : l.duration * 60 * 1000;
         const h = String(Math.floor(left / 3600000)).padStart(2, '0');
         const m = String(Math.floor((left % 3600000) / 60000)).padStart(2, '0');
         const s = String(Math.floor((left % 60000) / 1000)).padStart(2, '0');
         let status = 'valide';
         if (l.used) status = 'utilisée';
-        else if (left <= 0) status = 'expirée';
-        return { key: l.key, duration: l.duration, remaining: `${h}:${m}:${s}`, status };
+        else if (Date.now() > l.expiresAt) status = 'expirée';
+        const remainingText = l.used ? `${h}:${m}:${s}` : `${String(l.duration).padStart(2, '0')}:00:00 ✅`;
+        return { key: l.key, duration: l.duration, remaining: remainingText, status };
       });
   });
 
