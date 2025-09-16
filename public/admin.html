@@ -37,46 +37,26 @@
   <div id="content">Chargement...</div>
 
   <script>
-    function getDataFromURL() {
-      const hash = window.location.hash.substring(1);
-      if (!hash) return null;
-      try {
-        return JSON.parse(atob(hash));
-      } catch {
-        return null;
-      }
-    }
-
     function render(data) {
       const content = document.getElementById('content');
       if (!data || Object.keys(data).length === 0) {
         content.innerHTML = '<p style="text-align:center;">Aucune licence trouvée.</p>';
         return;
       }
-
       content.innerHTML = '';
-
       for (const [category, licenses] of Object.entries(data)) {
         const h2 = document.createElement('h2');
         h2.textContent = `Catégorie ${category}`;
         content.appendChild(h2);
-
         const table = document.createElement('table');
-        const rows = licenses.map(l => {
-          const isUsed = l.status === 'utilisée';
-          const keyText = isUsed ? `⏳⏳ ${l.key}` : l.key;
-          const remainingText = l.remaining;
-
-          return `
-            <tr>
-              <td>${keyText}</td>
-              <td>${l.duration}</td>
-              <td>${remainingText}</td>
-              <td>${l.status}</td>
-            </tr>
-          `;
-        }).join('');
-
+        const rows = licenses.map(l => `
+          <tr>
+            <td>${l.status === 'utilisée' ? `⏳⏳ ${l.key}` : l.key}</td>
+            <td>${l.duration}</td>
+            <td>${l.remaining}</td>
+            <td>${l.status}</td>
+          </tr>
+        `).join('');
         table.innerHTML = `
           <thead>
             <tr>
@@ -92,26 +72,25 @@
       }
     }
 
-    const data = getDataFromURL();
+    const data = JSON.parse(localStorage.getItem('adminData'));
     if (!data) {
       document.body.innerHTML = '<p style="text-align:center; color:red;">Aucune donnée reçue. Revenez à la page d\'accueil.</p>';
     } else {
       render(data);
     }
 
-    setInterval(() => {
-      fetch('/api/admin/licenses', {
+    setInterval(async () => {
+      const password = 'kouame2025';
+      const res = await fetch('/api/admin/licenses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: 'kouame2025' })
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (!data.error) {
-            window.location.hash = btoa(JSON.stringify(data));
-            render(data);
-          }
-        });
+        body: JSON.stringify({ password }),
+      });
+      const fresh = await res.json();
+      if (!fresh.error) {
+        localStorage.setItem('adminData', JSON.stringify(fresh));
+        render(fresh);
+      }
     }, 30000);
   </script>
 </body>
