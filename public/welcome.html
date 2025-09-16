@@ -64,10 +64,10 @@
       padding: 15px;
       border-radius: 10px;
     }
-    .poem { color: #6b46c1; font-style: italic; }
-    .proverb { color: #dd6b20; font-weight: bold; }
-    .bible { color: #3182ce; font-style: italic; }
-    .lesson { color: #38a169; font-weight: bold; }
+    .dialogue { color: #1e90ff; }
+    .proverbe { color: #ff4444; font-weight: bold; }
+    .poem { color: #ff69b4; font-style: italic; }
+    .bible { color: #ffcc00; font-weight: bold; }
     .episode { color: #3182ce; font-weight: bold; }
   </style>
 </head>
@@ -114,32 +114,41 @@
       if (!res.valid) location.href = 'index.html';
     }, 5000);
 
+    function formatStoryText(text) {
+      return text
+        .replace(/(^|\n)-\s*([^.\n!?]+[.\n!?]*)/g, '$1<span class="dialogue">- $2</span>')
+        .replace(/«([^»]+)»/g, '<span class="proverbe">«$1»</span>')
+        .replace(/épisode\s*(\d+)/gi, '<span class="episode">Épisode $1</span>')
+        .replace(/([.!?])\s*/g, "$1<br><br>");
+    }
+
     async function askAI() {
       const prompt = document.getElementById('prompt').value.trim();
       if (!prompt) return alert("Veuillez écrire une demande.");
       const resDiv = document.getElementById('result');
       resDiv.style.display = 'block';
-      resDiv.textContent = "Génération en cours...";
+      resDiv.innerHTML = "⏳ Génération en cours…";
 
-      const res = await fetch('/api/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
-      }).then(r => r.json());
-      if (res.error) {
-        resDiv.textContent = res.error;
-        return;
+      try {
+        const res = await fetch('/api/ai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt })
+        });
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let story = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          story += decoder.decode(value, { stream: true });
+          resDiv.innerHTML = formatStoryText(story);
+        }
+
+      } catch (err) {
+        resDiv.textContent = "Erreur OpenAI.";
       }
-      let html = res.result
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/\n/g, '<br>');
-      if (html.toLowerCase().includes('épisode')) html = html.replace(/(épisode\s*\d+)/gi, '<span class="episode">$1</span>');
-      if (html.toLowerCase().includes('proverbe')) html = `<div class="proverb">${html}</div>`;
-      else if (html.toLowerCase().includes('poème') || html.toLowerCase().includes('poem')) html = `<div class="poem">${html}</div>`;
-      else if (html.toLowerCase().includes('bible') || html.toLowerCase().includes('psaume')) html = `<div class="bible">${html}</div>`;
-      else if (html.toLowerCase().includes('leçon') || html.toLowerCase().includes('lesson')) html = `<div class="lesson">${html}</div>`;
-      resDiv.innerHTML = html;
     }
   </script>
 </body>
