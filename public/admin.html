@@ -65,7 +65,7 @@
         const rows = licenses.map(l => {
           const isUsed = l.status === 'utilisée';
           const keyText = isUsed ? `⏳⏳ ${l.key}` : l.key;
-          const remainingText = isUsed ? l.remaining : `${l.remaining} ✅`;
+          const remainingText = l.remaining;
 
           return `
             <tr>
