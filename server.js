@@ -83,17 +83,15 @@ app.get('/api/remaining/:key', (req, res) => {
 app.post('/api/admin/licenses', (req, res) => {
   if (req.body.password !== (process.env.ADMIN_PWD || 'kouame2025'))
     return res.status(403).json({ error: 'Accès refusé.' });
-
   maintainLicenses();
   const now = Date.now();
   const licenses = loadLicenses();
   const result = {};
-
   CATEGORIES.forEach(cat => {
     result[cat.name] = licenses
       .filter(l => l.category === cat.name)
       .map(l => {
-        const left = l.used ? Math.max(0, l.expiresAt - now) : l.duration * 60 * 1000;
+        const left = l.used ? Math.max(0, l.expiresAt - now) : l.duration * 60 * 0);
         const h = String(Math.floor(left / 3600000)).padStart(2, '0');
         const m = String(Math.floor((left % 3600000) / 60000)).padStart(2, '0');
         const s = String(Math.floor((left % 60000) / 1000)).padStart(2, '0');
@@ -104,21 +102,20 @@ app.post('/api/admin/licenses', (req, res) => {
         return { key: l.key, duration: l.duration, remaining: remainingText, status };
       });
   });
-
   res.json(result);
 });
 
 app.post('/api/ai', async (req, res) => {
-  if (!openai) return res.status(501).json({ error: 'IA non configurée.' });
+  if (!process.env.OPENAI_API_KEY) return res.status(501).json({ error: 'Clé API absente.' });
   const { prompt } = req.body;
   if (!prompt) return res.status(400).json({ error: 'Prompt manquant.' });
-
   try {
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const completion = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages: [{ role: 'user', content: prompt }],
-      max_tokens: 800,
-      temperature: 0.7
+      max_tokens: 600,
+      temperature: 0.7,
     });
     res.json({ result: completion.choices[0].message.content.trim() });
   } catch (err) {
