@@ -5,8 +5,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Système de Licences</title>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
-    button { margin: 10px; padding: 10px 20px; font-size: 16px; }
+    body {
+      height: 100vh;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      font-family: Arial, Helvetica, sans-serif;
+      color: #fff;
+    }
+    h1 { margin-bottom: 30px; font-size: 2.5rem; }
+    button {
+      margin: 10px;
+      padding: 15px 30px;
+      border: none;
+      border-radius: 30px;
+      background: #fff;
+      color: #764ba2;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 5px 15px rgba(0,0,0,.2);
+      transition: transform .2s;
+    }
+    button:hover { transform: scale(1.05); }
   </style>
 </head>
 <body>
@@ -24,7 +48,11 @@
         body: JSON.stringify({ key }),
       })
         .then(res => res.json())
-        .then(data => alert(data.message));
+        .then(data => {
+          if (!data.valid) return alert(data.message);
+          const expires = Date.now() + (data.remainingMs || 0);
+          window.location.href = `welcome.html?key=${encodeURIComponent(key)}&expires=${expires}`;
+        });
     }
 
     function adminAccess() {
@@ -38,7 +66,6 @@
         .then(res => res.json())
         .then(data => {
           if (data.error) return alert(data.error);
-          // Passe les données dans l'URL en base64
           const encoded = btoa(JSON.stringify(data));
           window.location.href = `admin.html#${encoded}`;
         });
