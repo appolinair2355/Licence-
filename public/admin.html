@@ -5,11 +5,31 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin - Licences</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    h2 { margin-top: 30px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-    th { background-color: #f2f2f2; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      padding: 40px 20px;
+    }
+    h1 { text-align: center; margin-bottom: 40px; }
+    h2 { margin-top: 40px; }
+    table {
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto 40px;
+      border-collapse: collapse;
+      background: #fff;
+      color: #333;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 5px 15px rgba(0,0,0,.2);
+    }
+    th, td { padding: 12px 15px; text-align: center; }
+    th { background: #764ba2; color: #fff; }
+    tr:nth-child(even) { background: #f2f2f2; }
+    .used { color: orange; font-weight: bold; }
+    .available { color: green; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -17,7 +37,6 @@
   <div id="content">Chargement...</div>
 
   <script>
-    // Récupère les données encodées dans l'URL
     function getDataFromURL() {
       const hash = window.location.hash.substring(1);
       if (!hash) return null;
@@ -28,11 +47,10 @@
       }
     }
 
-    // Affichage
     function render(data) {
       const content = document.getElementById('content');
       if (!data || Object.keys(data).length === 0) {
-        content.innerHTML = '<p>Aucune licence trouvée.</p>';
+        content.innerHTML = '<p style="text-align:center;">Aucune licence trouvée.</p>';
         return;
       }
 
@@ -46,14 +64,14 @@
         const table = document.createElement('table');
         const rows = licenses.map(l => {
           const isUsed = l.status === 'utilisée';
-          const keyText   = isUsed ? `⏳⏳ ${l.key}` : l.key;
-          const timeText  = isUsed ? l.remaining : `${l.remaining} ✅`;
+          const keyText = isUsed ? `⏳⏳ ${l.key}` : l.key;
+          const remainingText = isUsed ? l.remaining : `${l.remaining} ✅`;
 
           return `
             <tr>
               <td>${keyText}</td>
               <td>${l.duration}</td>
-              <td>${timeText}</td>
+              <td>${remainingText}</td>
               <td>${l.status}</td>
             </tr>
           `;
@@ -74,15 +92,13 @@
       }
     }
 
-    // Chargement initial
     const data = getDataFromURL();
     if (!data) {
-      document.body.innerHTML = '<p style="color:red;">Aucune donnée reçue. Revenez à la page d\'accueil.</p>';
+      document.body.innerHTML = '<p style="text-align:center; color:red;">Aucune donnée reçue. Revenez à la page d\'accueil.</p>';
     } else {
       render(data);
     }
 
-    // Refresh auto toutes les 30 s
     setInterval(() => {
       fetch('/api/admin/licenses', {
         method: 'POST',
