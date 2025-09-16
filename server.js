@@ -1,33 +1,27 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const { Configuration, OpenAIApi } = require('openai');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+const openai = OPENAI_API_KEY ? new OpenAIApi(new Configuration({ apiKey: OPENAI_API_KEY })) : null;
+
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static('public', { maxAge: process.env.NODE_ENV === 'production' ? '1d' : '0', etag: true }));
 
-const LICENSE_FILE = path.join(__dirname, 'licenses.json');
-const CATEGORIES = [
-  { name: '10min', duration: 10 },
-  { name: '25min', duration: 25 },
-  { name: '60min', duration: 60 },
-  { name: '120min', duration: 120 },
-];
+const LICENSE_FILE = path.resolve(process.env.LICENSES_PATH || './licenses.json');
+const CATEGORIES = (process.env.CATEGORIES || '10,25,60,120').split(',').map((d, i) => ({ name: `${d}min`, duration: parseInt(d, 10) }));
 
-function loadLicenses() {
-  if (!fs.existsSync(LICENSE_FILE)) return [];
-  return JSON.parse(fs.readFileSync(LICENSE_FILE));
-}
+const loadLicenses = () => fs.existsSync(LICENSE_FILE) ? JSON.parse(fs.readFileSync(LICENSE_FILE)) : [];
+const saveLicenses = (data) => fs.writeFileSync(LICENSE_FILE, JSON.stringify(data, null, 2));
 
-function saveLicenses(data) {
-  fs.writeFileSync(LICENSE_FILE, JSON.stringify(data, null, 2));
-}
-
-function generateKey() {
+const generateKey = () => {
   const now = new Date();
   const hh = String(now.getHours()).padStart(2, '0');
   const dd = String(now.getDate()).padStart(2, '0');
@@ -37,9 +31,9 @@ function generateKey() {
   const randLetters = Array.from({ length: 5 }, () => letters[Math.floor(Math.random() * letters.length)]).join('');
   const randDigits = Math.floor(1000 + Math.random() * 9000);
   return `${hh}${randLetters}${dd}${mm}${yyyy}${randDigits}`;
-}
+};
 
-function createLicense(category, duration) {
+const createLicense = (category, duration) => {
   const now = Date.now();
   return {
     key: generateKey(),
@@ -49,86 +43,78 @@ function createLicense(category, duration) {
     expiresAt: now + duration * 60 * 1000,
     used: false,
   };
-}
+};
 
-function maintainLicenses() {
+const maintainLicenses = () => {
   const licenses = loadLicenses();
   const now = Date.now();
-
   const valid = licenses.filter(l => l.expiresAt > now);
   const byCategory = {};
 
   CATEGORIES.forEach(cat => {
     byCategory[cat.name] = valid.filter(l => l.category === cat.name);
-    while (byCategory[cat.name].length < 5) {
-      const newLicense = createLicense(cat.name, cat.duration);
-      byCategory[cat.name].push(newLicense);
-    }
+    while (byCategory[cat.name].length < (process.env.LICENCES_PER_CAT || 5))
+      byCategory[cat.name].push(createLicense(cat.name, cat.duration));
   });
 
-  const all = Object.values(byCategory).flat();
-  saveLicenses(all);
-}
+  saveLicenses(Object.values(byCategory).flat());
+};
 
-// Routes
 app.post('/api/verify', (req, res) => {
   const { key } = req.body;
   const licenses = loadLicenses();
-  const license = licenses.find(l => l.key === key);
-
-  if (!license) return res.json({ valid: false, message: 'Licence invalide.' });
-  if (license.used) return res.json({ valid: false, message: 'Licence déjà utilisée.' });
-  if (Date.now() > license.expiresAt) return res.json({ valid: false, message: 'Licence expirée.' });
-
-  license.used = true;
+  const lic = licenses.find(l => l.key === key);
+  if (!lic) return res.json({ valid: false, message: 'Licence invalide.' });
+  if (lic.used) return res.json({ valid: false, message: 'Licence déjà utilisée.' });
+  if (Date.now() > lic.expiresAt) return res.json({ valid: false, message: 'Licence expirée.' });
+  lic.used = true;
   saveLicenses(licenses);
-
-  const remaining = license.expiresAt - Date.now();
-  const hours = Math.floor(remaining / 3600000);
-  const minutes = Math.floor((remaining % 3600000) / 60000);
-  const seconds = Math.floor((remaining % 60000) / 1000);
-
-  res.json({
-    valid: true,
-    message: `Licence valide. Temps restant : ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`,
-  });
+  res.json({ valid: true, remainingMs: lic.expiresAt - Date.now() });
 });
 
 app.post('/api/admin/licenses', (req, res) => {
-  const { password } = req.body;
-  if (password !== 'kouame2025') return res.status(403).json({ error: 'Accès refusé.' });
-
+  if (req.body.password !== (process.env.ADMIN_PWD || 'kouame2025')) return res.status(403).json({ error: 'Accès refusé.' });
   maintainLicenses();
-  const licenses = loadLicenses();
   const now = Date.now();
-
+  const licenses = loadLicenses();
   const result = {};
-
   CATEGORIES.forEach(cat => {
     result[cat.name] = licenses
       .filter(l => l.category === cat.name)
       .map(l => {
-        const remaining = Math.max(0, l.expiresAt - now);
-        const hours = Math.floor(remaining / 3600000);
-        const minutes = Math.floor((remaining % 3600000) / 60000);
-        const seconds = Math.floor((remaining % 60000) / 1000);
+        const left = Math.max(0, l.expiresAt - now);
+        const h = String(Math.floor(left / 3600000)).padStart(2, '0');
+        const m = String(Math.floor((left % 3600000) / 60000)).padStart(2, '0');
+        const s = String(Math.floor((left % 60000) / 1000)).padStart(2, '0');
         let status = 'valide';
         if (l.used) status = 'utilisée';
-        else if (remaining <= 0) status = 'expirée';
-        return {
-          key: l.key,
-          duration: l.duration,
-          remaining: `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`,
-          status,
-        };
+        else if (left <= 0) status = 'expirée';
+        return { key: l.key, duration: l.duration, remaining: `${h}:${m}:${s}`, status };
       });
   });
-
   res.json(result);
 });
 
-// Démarrage
+app.post('/api/ai', async (req, res) => {
+  if (!openai) return res.status(501).json({ error: 'IA non configurée.' });
+  const { prompt } = req.body;
+  if (!prompt) return res.status(400).json({ error: 'Prompt manquant.' });
+
+  try {
+    const completion = await openai.createChatCompletion({
+      model: 'gpt-3.5-turbo',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 800,
+      temperature: 0.7
+    });
+    res.json({ result: completion.data.choices[0].message.content.trim() });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur OpenAI.' });
+  }
+});
+
 maintainLicenses();
-setInterval(maintainLicenses, 30000); // toutes les 30s
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-                               
+setInterval(maintainLicenses, 30_000);
+app.listen(PORT, () => console.log(`🌍 Server running on port ${PORT}`));
+    
