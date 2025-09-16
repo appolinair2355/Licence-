@@ -109,7 +109,6 @@
     }
     update(); setInterval(update, 1000);
 
-    // Vérifie côté serveur toutes les 5 s (redirection si jamais)
     setInterval(async () => {
       const res = await fetch(`/api/remaining/${key}`).then(r => r.json());
       if (!res.valid) location.href = 'index.html';
@@ -125,7 +124,7 @@
       const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt })
+        body: JSON.stringify({ prompt }),
       }).then(r => r.json());
       if (res.error) {
         resDiv.textContent = res.error;
@@ -144,5 +143,4 @@
     }
   </script>
 </body>
-  </html>
-  
+</html>
