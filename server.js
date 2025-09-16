@@ -91,7 +91,7 @@ app.post('/api/admin/licenses', (req, res) => {
     result[cat.name] = licenses
       .filter(l => l.category === cat.name)
       .map(l => {
-        const left = l.used ? Math.max(0, l.expiresAt - now) : l.duration * 60 * 0);
+        const left = l.used ? Math.max(0, l.expiresAt - now) : l.duration * 60 * 1000;
         const h = String(Math.floor(left / 3600000)).padStart(2, '0');
         const m = String(Math.floor((left % 3600000) / 60000)).padStart(2, '0');
         const s = String(Math.floor((left % 60000) / 1000)).padStart(2, '0');
